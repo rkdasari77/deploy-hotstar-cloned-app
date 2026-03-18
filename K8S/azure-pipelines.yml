@@ -4,7 +4,7 @@ trigger:
       - main
 
 pool:
-  name: raj-vm-pool
+  name: raj-vm-self-hosted-agent
 
 variables:
   - group: hotstar-pipeline-vars
