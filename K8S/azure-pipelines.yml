@@ -52,6 +52,8 @@ stages:
         cliProjectKey: 'Hotstar'
         cliProjectName: 'Hotstar'
         cliSources: '.'
+        extraProperties: |
+          sonar.branch.name=
     - task: SonarQubeAnalyze@8
       displayName: 'Run SonarQube scan'
     - task: SonarQubePublish@8
