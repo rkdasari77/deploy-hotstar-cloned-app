@@ -5,6 +5,8 @@ trigger:
 
 pool:
   name: raj-vm-self-hosted-agent
+  demands:
+    - agent.name -equals raj-vm
 
 variables:
   - group: hotstar-pipeline-vars
