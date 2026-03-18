@@ -35,7 +35,7 @@ stages:
         versionSpec: '18.x'    # React CRA app — matches raj-vm Node version
     - script: npm install
       displayName: 'npm install (for SonarQube scan)'
-    - task: SonarQubePrepare@5
+    - task: SonarQubePrepare@7
       inputs:
         SonarQube: 'SonarQube-hotstar'
         scannerMode: 'CLI'
@@ -43,12 +43,13 @@ stages:
         cliProjectKey: 'Hotstar'
         cliProjectName: 'Hotstar'
         cliSources: '.'
-    - task: SonarQubeAnalyze@5
+    - task: SonarQubeAnalyze@7
       displayName: 'Run SonarQube scan'
-    - task: SonarQubePublish@5
+    - task: SonarQubePublish@7
       displayName: 'Wait for quality gate'
       inputs:
         pollingTimeoutSec: '300'
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # STAGE 2: Trivy Filesystem Scan
