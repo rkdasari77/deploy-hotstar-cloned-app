@@ -8,136 +8,139 @@ pool:
   demands:
     - agent.name -equals raj-vm
 
-variables:
-  - group: hotstar-pipeline-vars
-  - name: tag
-    value: '$(Build.BuildId)'
-  - name: DOCKER_IMAGE
-    value: 'rkdasari0318/disney-hotstar'
-  - name: K8S_NAMESPACE
-    value: 'hotstar'
-  - name: K8S_DEPLOYMENT
-    value: 'hotstar-deployment'
-  - name: APP_PORT
-    value: '3000'
+steps:
+- script: echo Hello
 
-# ─────────────────────────────────────────────────────────────────────────
-# STAGE 1: Code Quality (SonarQube)
-# ─────────────────────────────────────────────────────────────────────────
-stages:
-- stage: CodeQuality
-  displayName: '1. SonarQube Analysis'
-  jobs:
-  - job: SonarScan
-    steps:
-    - checkout: self
-    - task: NodeTool@0
-      displayName: 'Use Node 18'
-      inputs:
-        versionSpec: '18.x'    # React CRA app — matches raj-vm Node version
-    - script: npm install
-      displayName: 'npm install (for SonarQube scan)'
-    - task: SonarQubePrepare@7
-      inputs:
-        SonarQube: 'SonarQube-hotstar'
-        scannerMode: 'CLI'
-        configMode: 'manual'
-        cliProjectKey: 'Hotstar'
-        cliProjectName: 'Hotstar'
-        cliSources: '.'
-    - task: SonarQubeAnalyze@7
-      displayName: 'Run SonarQube scan'
-    - task: SonarQubePublish@7
-      displayName: 'Wait for quality gate'
-      inputs:
-        pollingTimeoutSec: '300'
+# variables:
+#   - group: hotstar-pipeline-vars
+#   - name: tag
+#     value: '$(Build.BuildId)'
+#   - name: DOCKER_IMAGE
+#     value: 'rkdasari0318/disney-hotstar'
+#   - name: K8S_NAMESPACE
+#     value: 'hotstar'
+#   - name: K8S_DEPLOYMENT
+#     value: 'hotstar-deployment'
+#   - name: APP_PORT
+#     value: '3000'
+
+# # ─────────────────────────────────────────────────────────────────────────
+# # STAGE 1: Code Quality (SonarQube)
+# # ─────────────────────────────────────────────────────────────────────────
+# stages:
+# - stage: CodeQuality
+#   displayName: '1. SonarQube Analysis'
+#   jobs:
+#   - job: SonarScan
+#     steps:
+#     - checkout: self
+#     - task: NodeTool@0
+#       displayName: 'Use Node 18'
+#       inputs:
+#         versionSpec: '18.x'    # React CRA app — matches raj-vm Node version
+#     - script: npm install
+#       displayName: 'npm install (for SonarQube scan)'
+#     - task: SonarQubePrepare@7
+#       inputs:
+#         SonarQube: 'SonarQube-hotstar'
+#         scannerMode: 'CLI'
+#         configMode: 'manual'
+#         cliProjectKey: 'Hotstar'
+#         cliProjectName: 'Hotstar'
+#         cliSources: '.'
+#     - task: SonarQubeAnalyze@7
+#       displayName: 'Run SonarQube scan'
+#     - task: SonarQubePublish@7
+#       displayName: 'Wait for quality gate'
+#       inputs:
+#         pollingTimeoutSec: '300'
 
 
-# ─────────────────────────────────────────────────────────────────────────
-# STAGE 2: Trivy Filesystem Scan
-# ─────────────────────────────────────────────────────────────────────────
-- stage: SecurityScans
-  displayName: '2. Trivy Filesystem Scan'
-  dependsOn: CodeQuality
-  jobs:
-  - job: TrivyScan
-    steps:
-    - checkout: self
-    - script: |
-        trivy fs . --exit-code 0 --severity HIGH,CRITICAL > trivyfs.txt 2>&1
-        cat trivyfs.txt
-      displayName: 'Trivy Filesystem Scan'
-    - task: PublishBuildArtifacts@1
-      displayName: 'Save Trivy FS report'
-      inputs:
-        pathToPublish: 'trivyfs.txt'
-        artifactName: 'security-reports'
-      condition: always()
+# # ─────────────────────────────────────────────────────────────────────────
+# # STAGE 2: Trivy Filesystem Scan
+# # ─────────────────────────────────────────────────────────────────────────
+# - stage: SecurityScans
+#   displayName: '2. Trivy Filesystem Scan'
+#   dependsOn: CodeQuality
+#   jobs:
+#   - job: TrivyScan
+#     steps:
+#     - checkout: self
+#     - script: |
+#         trivy fs . --exit-code 0 --severity HIGH,CRITICAL > trivyfs.txt 2>&1
+#         cat trivyfs.txt
+#       displayName: 'Trivy Filesystem Scan'
+#     - task: PublishBuildArtifacts@1
+#       displayName: 'Save Trivy FS report'
+#       inputs:
+#         pathToPublish: 'trivyfs.txt'
+#         artifactName: 'security-reports'
+#       condition: always()
 
-# ─────────────────────────────────────────────────────────────────────────
-# STAGE 3: Docker Build & Push
-# ─────────────────────────────────────────────────────────────────────────
-- stage: DockerBuild
-  displayName: '3. Docker Build + Push'
-  dependsOn: SecurityScans
-  jobs:
-  - job: DockerBuildPush
-    steps:
-    - checkout: self
-    - script: |
-        echo $(DOCKER_PASSWORD) | docker login -u rkdasari0318 --password-stdin
-        docker build -t $(DOCKER_IMAGE):$(tag) -t $(DOCKER_IMAGE):latest .
-        docker push $(DOCKER_IMAGE):$(tag)
-        docker push $(DOCKER_IMAGE):latest
-      displayName: 'Build and push rkdasari0318/disney-hotstar to Docker Hub'
-    - script: |
-        trivy image $(DOCKER_IMAGE):latest --exit-code 0 --severity HIGH,CRITICAL > trivyimage.txt 2>&1
-        cat trivyimage.txt
-      displayName: 'Trivy Image Scan'
-    - task: PublishBuildArtifacts@1
-      displayName: 'Save Trivy image report'
-      inputs:
-        pathToPublish: 'trivyimage.txt'
-        artifactName: 'security-reports'
-      condition: always()
+# # ─────────────────────────────────────────────────────────────────────────
+# # STAGE 3: Docker Build & Push
+# # ─────────────────────────────────────────────────────────────────────────
+# - stage: DockerBuild
+#   displayName: '3. Docker Build + Push'
+#   dependsOn: SecurityScans
+#   jobs:
+#   - job: DockerBuildPush
+#     steps:
+#     - checkout: self
+#     - script: |
+#         echo $(DOCKER_PASSWORD) | docker login -u rkdasari0318 --password-stdin
+#         docker build -t $(DOCKER_IMAGE):$(tag) -t $(DOCKER_IMAGE):latest .
+#         docker push $(DOCKER_IMAGE):$(tag)
+#         docker push $(DOCKER_IMAGE):latest
+#       displayName: 'Build and push rkdasari0318/disney-hotstar to Docker Hub'
+#     - script: |
+#         trivy image $(DOCKER_IMAGE):latest --exit-code 0 --severity HIGH,CRITICAL > trivyimage.txt 2>&1
+#         cat trivyimage.txt
+#       displayName: 'Trivy Image Scan'
+#     - task: PublishBuildArtifacts@1
+#       displayName: 'Save Trivy image report'
+#       inputs:
+#         pathToPublish: 'trivyimage.txt'
+#         artifactName: 'security-reports'
+#       condition: always()
 
-# ─────────────────────────────────────────────────────────────────────────
-# STAGE 4: Deploy to shopwave-aks
-# ─────────────────────────────────────────────────────────────────────────
-- stage: DeployAKS
-  displayName: '4. Deploy to shopwave-aks'
-  dependsOn: DockerBuild
-  jobs:
-  - deployment: DeployHotstar
-    displayName: 'Deploy to namespace: $(K8S_NAMESPACE)'
-    environment: 'shopwave-aks'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - checkout: self
-          - task: KubernetesManifest@1
-            displayName: 'Apply K8S/manifest.yml'
-            inputs:
-              action: 'deploy'
-              kubernetesServiceConnection: 'shopwave-aks-connection'
-              namespace: '$(K8S_NAMESPACE)'
-              manifests: 'K8S/manifest.yml'
-              containers: '$(DOCKER_IMAGE):$(tag)'
+# # ─────────────────────────────────────────────────────────────────────────
+# # STAGE 4: Deploy to shopwave-aks
+# # ─────────────────────────────────────────────────────────────────────────
+# - stage: DeployAKS
+#   displayName: '4. Deploy to shopwave-aks'
+#   dependsOn: DockerBuild
+#   jobs:
+#   - deployment: DeployHotstar
+#     displayName: 'Deploy to namespace: $(K8S_NAMESPACE)'
+#     environment: 'shopwave-aks'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - checkout: self
+#           - task: KubernetesManifest@1
+#             displayName: 'Apply K8S/manifest.yml'
+#             inputs:
+#               action: 'deploy'
+#               kubernetesServiceConnection: 'shopwave-aks-connection'
+#               namespace: '$(K8S_NAMESPACE)'
+#               manifests: 'K8S/manifest.yml'
+#               containers: '$(DOCKER_IMAGE):$(tag)'
 
-# ─────────────────────────────────────────────────────────────────────────
-# STAGE 5: Notify (always runs)
-# ─────────────────────────────────────────────────────────────────────────
-- stage: Notify
-  displayName: '5. Notify'
-  dependsOn: DeployAKS
-  condition: always()
-  jobs:
-  - job: Notify
-    steps:
-    - script: |
-        echo "Pipeline status : $(Agent.JobStatus)"
-        echo "Image pushed    : $(DOCKER_IMAGE):$(tag)"
-        echo "Namespace       : $(K8S_NAMESPACE)"
-        echo "Build ID        : $(Build.BuildId)"
-      displayName: 'Print build summary'
+# # ─────────────────────────────────────────────────────────────────────────
+# # STAGE 5: Notify (always runs)
+# # ─────────────────────────────────────────────────────────────────────────
+# - stage: Notify
+#   displayName: '5. Notify'
+#   dependsOn: DeployAKS
+#   condition: always()
+#   jobs:
+#   - job: Notify
+#     steps:
+#     - script: |
+#         echo "Pipeline status : $(Agent.JobStatus)"
+#         echo "Image pushed    : $(DOCKER_IMAGE):$(tag)"
+#         echo "Namespace       : $(K8S_NAMESPACE)"
+#         echo "Build ID        : $(Build.BuildId)"
+#       displayName: 'Print build summary'
